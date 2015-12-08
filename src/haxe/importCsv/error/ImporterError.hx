@@ -17,9 +17,7 @@
  * limitations under the License.
  */
 
-package com.qifun.importCsv.error ;
-
-import com.qifun.util.locale.Translator;
+package importCsv.error ;
 
 class ImporterError
 {
@@ -27,7 +25,7 @@ class ImporterError
   public var max:Int;
   public var file:String;
 
-  @:allow(com.qifun.importCsv)
+  @:allow(importCsv)
   function new(min:Int, max:Int, file:String)
   {
     this.min = min;
@@ -49,7 +47,7 @@ class UnexpectedVarInitializer extends ImporterError
 
   override function get_message() return
   {
-    Translator.translate("The var definition in first row must not include a initializer");
+    "The var definition in first row must not include a initializer";
   }
 
 }
@@ -59,7 +57,7 @@ class UnexpectedAccess extends ImporterError
 
   override function get_message() return
   {
-    Translator.translate("Unexpected access");
+    "Unexpected access";
   }
 
 }
@@ -69,7 +67,7 @@ class UnexpectedFunctionBody extends ImporterError
 
   override function get_message() return
   {
-    Translator.translate("The function definition in first row must not include a function body");
+    "The function definition in first row must not include a function body";
   }
 
 }
@@ -77,42 +75,42 @@ class UnexpectedFunctionBody extends ImporterError
 class PropertyIsNotSupported extends ImporterError
 {
 
-  override function get_message() return Translator.translate("Property is not supported");
+  override function get_message() return "Property is not supported";
 
 }
 
 class ExpectField extends ImporterError
 {
 
-  override function get_message() return Translator.translate("Expected `function` or `var`");
+  override function get_message() return "Expected `function` or `var`";
 
 }
 
 class ExpectStringLiteral extends ImporterError
 {
 
-  override function get_message() return Translator.translate("Expected \"");
+  override function get_message() return "Expected \"";
 
 }
 
 class ExpectTypePath extends ImporterError
 {
 
-  override function get_message() return Translator.translate("Expected TypePath");
+  override function get_message() return "Expected TypePath";
 
 }
 
 class ExpectImportExpr extends ImporterError
 {
 
-  override function get_message() return Translator.translate("Expected ImportExpr");
+  override function get_message() return "Expected ImportExpr";
 
 }
 
 class ExpectVar extends ImporterError
 {
 
-  override function get_message() return Translator.translate("Expected `var`");
+  override function get_message() return "Expected `var`";
 
 }
 
@@ -120,7 +118,7 @@ class ExpectVar extends ImporterError
 class ExpectMetaOrRowId extends ImporterError
 {
 
-  override function get_message() return Translator.translate("Expected `@meta` or `RowId`");
+  override function get_message() return "Expected `@meta` or `RowId`";
 
 }
 
@@ -129,7 +127,7 @@ class InvalidCsvFileName extends ImporterError
 
   override function get_message() return
   {
-    Translator.translate("The file name should match *.*.utf-8.csv!");
+    "The file name should match *.*.utf-8.csv!";
   }
 
 }

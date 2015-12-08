@@ -17,12 +17,11 @@
  * limitations under the License.
  */
 
-package com.qifun.importCsv;
+package importCsv;
 
-import com.qifun.util.locale.Translator;
 import haxe.macro.*;
 
-@:parseCellFunction(com.qifun.importCsv.StringInterpolation.StringInterpolationCellParser.parseCell)
+@:parseCellFunction(importCsv.StringInterpolation.StringInterpolationCellParser.parseCell)
 typedef StringInterpolation = String;
 
 @:dox(hide)
@@ -45,7 +44,7 @@ class StringInterpolationCellParser
       }
       case { pos: pos } :
       {
-        Context.error(Translator.translate("Expected \""), pos);
+        Context.error("Expected \"", pos);
       }
     }
   }

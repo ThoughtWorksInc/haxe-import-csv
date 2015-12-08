@@ -17,12 +17,12 @@
  * limitations under the License.
  */
 
-package com.qifun.importCsv;
+package importCsv;
 
 import com.dongxiguo.continuation.Continuation;
 import com.dongxiguo.continuation.utils.Generator;
-import com.qifun.importCsv.CsvParser;
-import com.qifun.importCsv.error.ImporterError;
+import importCsv.CsvParser;
+import importCsv.error.ImporterError;
 import haxe.ds.StringMap;
 import haxe.ds.Vector;
 import haxe.io.Bytes;
@@ -36,7 +36,6 @@ import haxe.macro.*;
 import haxe.zip.Uncompress;
 using StringTools;
 using Lambda;
-using com.qifun.util.locale.Translator;
 
 typedef Worksheet =
 {
@@ -133,7 +132,7 @@ class Importer
 
   static var IMPORTED_ROW_TYPE_PATH(default, never):TypePath =
   {
-    pack: [ "com", "qifun", "importCsv" ],
+    pack: [ "importCsv" ],
     name: "ImportedRow",
   }
 
@@ -288,7 +287,7 @@ class Importer
 
     用法：
     `
-    haxe --macro "com.qifun.importCsv.Importer.importCsvFile(['myPackage/ModuleName.xlsx.ClassName1.utf-8.csv','myPackage/ModuleName.xlsx.ClassName2.utf-8.csv'])"
+    haxe --macro "importCsv.Importer.importCsvFile(['myPackage/ModuleName.xlsx.ClassName1.utf-8.csv','myPackage/ModuleName.xlsx.ClassName2.utf-8.csv'])"
     `
   **/
   macro public static function importCsv(csvFilePaths:Iterable<String>):Void
@@ -775,7 +774,7 @@ class Importer
                       expr: EConst(CString(fieldBody)),
                       pos: getPosition(cell),
                     };
-                    macro com.qifun.importCsv.Importer.ImporterRuntime.parseCell($cellContentExpr);
+                    macro importCsv.Importer.ImporterRuntime.parseCell($cellContentExpr);
                   }
                 }
                 var newAccess = switch (sourceField.access)
@@ -1258,7 +1257,7 @@ class ImporterRuntime
           }
           case { pos: pos } :
           {
-            Context.error(Translator.translate("Expected \""), pos);
+            Context.error("Expected \"", pos);
           }
         }
       }

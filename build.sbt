@@ -1,29 +1,39 @@
-organization := "com.qifun"
+enablePlugins(AllHaxePlugins)
+
+organization := "com.thoughtworks.microbuilder"
 
 name := "haxe-import-csv"
 
-version := "0.2.1-SNAPSHOT"
+autoScalaLibrary := false
+
+crossPaths := false
 
 for {
-  c <- Seq(Compile, Test, CSharp, TestCSharp)
+  c <- AllTargetConfigurations ++ AllTestTargetConfigurations
 } yield {
   haxeOptions in c ++=
-    Seq(
-      "-lib", "continuation",
-      "-lib", "haxeparser",
-      "-lib", "hxparse",
-      "-D", "using_worksheet")
+    Seq("-D", "using_worksheet")
+}
+
+val haxelibs = Map(
+  "continuation" -> DependencyVersion.SpecificVersion("1.3.2"),
+  "haxeparser" -> DependencyVersion.SpecificVersion("1.0.0"),
+  "hxparse" -> DependencyVersion.SpecificVersion("4.0.0")
+)
+
+haxelibDependencies ++= haxelibs
+
+for (c <- AllTargetConfigurations ++ AllTestTargetConfigurations) yield {
+  haxeOptions in c ++= haxelibOptions(haxelibs)
 }
 
 for (c <- Seq(CSharp, TestCSharp)) yield {
   haxeOptions in c ++= Seq("-D", "dll")
 }
 
-haxeOptions in Test ++= Seq("--macro", "com.qifun.util.locale.Translator.addTranslationFile('zh_CN.GBK','com/qifun/importCsv/translation.zh_CN.GBK.json')")
+haxeOptions in Test ++= Seq("--macro", "importCsv.Importer.importCsv(['importCsv/TestConfig.xlsx.Foo.utf-8.csv','importCsv/TestConfig.xlsx.Sheet2.utf-8.csv','importCsv/TestConfig.xlsx.Sheet3.utf-8.csv','importCsv/TestConfig.xlsx.import.utf-8.csv','importCsv/TestConfig.xlsx.using.utf-8.csv'])")
 
-haxeOptions in Test ++= Seq("--macro", "com.qifun.importCsv.Importer.importCsv(['com/qifun/importCsv/TestConfig.xlsx.Foo.utf-8.csv','com/qifun/importCsv/TestConfig.xlsx.Sheet2.utf-8.csv','com/qifun/importCsv/TestConfig.xlsx.Sheet3.utf-8.csv','com/qifun/importCsv/TestConfig.xlsx.import.utf-8.csv','com/qifun/importCsv/TestConfig.xlsx.using.utf-8.csv'])")
-
-haxeOptions in Test ++= Seq("-main", "com.qifun.importCsv.ImporterTest")
+haxeOptions in Test ++= Seq("-main", "importCsv.ImporterTest")
 
 sourceGenerators in TestHaxe <+= Def.task {
   val xlsxBase = (sourceDirectory in TestHaxe).value
@@ -42,42 +52,63 @@ sourceGenerators in TestHaxe <+= Def.task {
   unzipXlsx((xlsxBase ** "*.xlsx").get.toSet).toSeq
 }
 
-libraryDependencies += "com.qifun" % "haxe-util" % "0.1.1" % HaxeJava classifier("haxe-java")
-
 crossScalaVersions := Seq("2.11.2")
 
-homepage := Some(url(s"https://github.com/qifun/${name.value}"))
+homepage := Some(url(s"https://github.com/ThoughtWorksInc/${name.value}"))
 
 startYear := Some(2014)
 
-licenses := Seq("Apache License, Version 2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0.html"))
+licenses := Seq("Apache" -> url("http://www.apache.org/licenses/LICENSE-2.0.html"))
 
-publishTo <<= (isSnapshot) { isSnapshot: Boolean =>
-  if (isSnapshot)
-    Some("snapshots" at "https://oss.sonatype.org/content/repositories/snapshots")
-  else
-    Some("releases" at "https://oss.sonatype.org/service/local/staging/deploy/maven2")
-}
+releaseUseGlobalVersion := false
+
+releasePublishArtifactsAction := PgpKeys.publishSigned.value
+
+import ReleaseTransformations._
+
+releaseProcess := Seq[ReleaseStep](
+  checkSnapshotDependencies,
+  inquireVersions,
+  runClean,
+  runTest,
+  setReleaseVersion,
+  commitReleaseVersion,
+  tagRelease,
+  releaseStepTask(publish in Haxe),
+  publishArtifacts,
+  setNextVersion,
+  commitNextVersion,
+  releaseStepCommand("sonatypeRelease"),
+  pushChanges
+)
 
 scmInfo := Some(ScmInfo(
-  url(s"https://github.com/qifun/${name.value}"),
-  s"scm:git:git://github.com/qifun/${name.value}.git",
-  Some(s"scm:git:git@github.com:qifun/${name.value}.git")))
+  url(s"https://github.com/ThoughtWorksInc/${name.value}"),
+  s"scm:git:git://github.com/ThoughtWorksInc/${name.value}.git",
+  Some(s"scm:git:git@github.com:ThoughtWorksInc/${name.value}.git")))
 
-pomExtra :=
-  <developers>
-    <developer>
-      <id>Atry</id>
-      <name>杨博 (Yang Bo)</name>
-      <timezone>+8</timezone>
-      <email>pop.atry@gmail.com</email>
-    </developer>
-    <developer>
-      <id>zxiy</id>
-      <name>张修羽 (Zhang Xiuyu)</name>
-      <timezone>+8</timezone>
-      <email>95850845@qq.com</email>
-    </developer>
-  </developers>
+haxelibContributors := Seq("Atry")
+
+developers := List(
+  Developer(
+    "Atry",
+    "杨博 (Yang Bo)",
+    "pop.atry@gmail.com",
+    url("https://github.com/Atry")
+  ),
+  Developer(
+    "zxiy",
+    "张修羽 (Zhang Xiuyu)",
+    "95850845@qq.com",
+    url("https://github.com/zxiy")
+  )
+)
+
+haxelibReleaseNote := "First release to haxelib."
+
+haxelibTags ++= Seq(
+  "cross", "cpp", "cs", "flash", "java", "javascript", "js", "neko", "php", "python", "nme",
+  "csv", "data", "macro", "serialization", "configuration"
+)
 
 // vim: sts=2 sw=2 et

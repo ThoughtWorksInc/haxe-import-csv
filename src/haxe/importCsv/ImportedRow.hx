@@ -17,13 +17,13 @@
  * limitations under the License.
  */
 
-package com.qifun.importCsv;
+package importCsv;
 import haxe.macro.Expr;
 import haxe.macro.Context;
 import haxe.macro.MacroStringTools;
 
 @:nativeGen
-@:autoBuild(com.qifun.importCsv.ImportedRow.ImportedRowBuilder.build())
+@:autoBuild(importCsv.ImportedRow.ImportedRowBuilder.build())
 class ImportedRow
 #if java
 extends java.lang.Object implements java.internal.IEquatable
