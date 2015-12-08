@@ -94,6 +94,4 @@ haxelibTags ++= Seq(
   "csv", "data", "macro", "serialization", "configuration"
 )
 
-haxeExtraParams += "-D js-unflatten"
-
 // vim: sts=2 sw=2 et
