@@ -104,7 +104,7 @@ developers := List(
   )
 )
 
-haxelibReleaseNote := "First release to haxelib."
+haxelibReleaseNote := "Fix compiler error for platforms other than Java and C#."
 
 haxelibTags ++= Seq(
   "cross", "cpp", "cs", "flash", "java", "javascript", "js", "neko", "php", "python", "nme",

@@ -31,6 +31,9 @@ extends java.lang.Object implements java.internal.IEquatable
 extends cs.system.Object
 #end
 {
+  #if (!java && !cs)
+  public inline function new() {}
+  #end
 
   @:dox(show)
   var y(get, never):Bool;
