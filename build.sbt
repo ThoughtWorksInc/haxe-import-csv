@@ -35,23 +35,6 @@ haxeOptions in Test ++= Seq("--macro", "importCsv.Importer.importCsv(['importCsv
 
 haxeOptions in Test ++= Seq("-main", "importCsv.ImporterTest")
 
-sourceGenerators in TestHaxe <+= Def.task {
-  val xlsxBase = (sourceDirectory in TestHaxe).value
-  val unzippedBase = (sourceManaged in TestHaxe).value
-  val unzipXlsx = FileFunction.cached(
-    streams.value.cacheDirectory / ("unzip_xlsx_" + scalaVersion.value),
-    inStyle = FilesInfo.lastModified,
-    outStyle = FilesInfo.exists) { xlsxFiles: Set[File] =>
-      streams.value.log.info(s"Unzipping ${xlsxFiles.size} XLSX files...")
-      for {
-        xlsxFile <- xlsxFiles
-        if !xlsxFile.isHidden // 跳过备份文件
-        outputFile <- IO.unzip(xlsxFile, unzippedBase / xlsxFile.relativeTo(xlsxBase).get.toString)
-      } yield outputFile
-    }
-  unzipXlsx((xlsxBase ** "*.xlsx").get.toSet).toSeq
-}
-
 crossScalaVersions := Seq("2.11.2")
 
 homepage := Some(url(s"https://github.com/ThoughtWorksInc/${name.value}"))
