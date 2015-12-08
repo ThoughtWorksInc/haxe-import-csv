@@ -30,10 +30,8 @@ import haxe.io.Eof;
 import haxe.io.Input;
 import haxe.macro.Type;
 import haxe.macro.Expr;
-import haxe.zip.Entry;
-import haxe.zip.Reader;
 import haxe.macro.*;
-import haxe.zip.Uncompress;
+
 using StringTools;
 using Lambda;
 
@@ -76,9 +74,9 @@ class ParserDefine
 @:final
 private class SimnParser implements IHaxeParser
 {
-  var defines:Vector<ParserDefine>;
+  var defines:Iterable<ParserDefine>;
 
-  public function new(defines:Vector<ParserDefine>)
+  public function new(defines:Iterable<ParserDefine>)
   {
     this.defines = defines;
   }
@@ -136,19 +134,19 @@ class Importer
     name: "ImportedRow",
   }
 
-  #if sys
+  #if (sys || macro)
 
   public static function generateSources(
     baseCsvPath:String,
     csvFilePaths:Iterable<String>,
     generateTo:String
-    #if (!macro) , ?defines:Vector<ParserDefine> #end
+    #if (!macro) , ?defines:Iterable<ParserDefine> #end
     ):Array<String> return
   {
     #if (!macro)
     if (defines == null)
     {
-      defines = new Vector<ParserDefine>(0);
+      defines = [];
     }
     #end
     var csvEntries =
@@ -596,7 +594,6 @@ class Importer
         case worksheetName:
         {
           var baseClassName = workbookName + "_Row";
-          var externalBridgeClassName = worksheetName + "_ExternalBridge";
           var bridgeClassName = worksheetName + "_Bridge";
           var moduleExpr = switch (MacroStringTools.toFieldExpr(pack))
           {
@@ -637,7 +634,11 @@ class Importer
                 {
                   name: ":nativeGen",
                   pos: PositionTools.here(),
-                }
+                },
+                {
+                  name: ":expose",
+                  pos: PositionTools.here(),
+                },
               ]
             });
             workbookModule.push(
@@ -678,7 +679,6 @@ class Importer
           var headPos = getPosition(headRow[0]);
           var numColumnsRequired = headRow.length;
           var fieldBuilders = [];
-          var externalBridgeFields:Array<Field> = [];
           var bridgeFields:Array<Field> = [];
           for (x in 2...numColumnsRequired)
           {
@@ -698,23 +698,6 @@ class Importer
                 {
                   var fieldName = sourceField.name;
                   var getterName = 'get_$fieldName';
-                  // The getter method in Haxe.
-                  externalBridgeFields.push(
-                    {
-                      pos: headCellPos,
-                      name: getterName,
-                      access: [ APrivate ],
-                      meta:
-                      [
-                        { pos: headCellPos, name: ":noCompletion" },
-                      ],
-                      kind: FFun(
-                        {
-                          args: [],
-                          ret: t,
-                          expr: null,
-                        }),
-                    });
                   // The getter method in Haxe.
                   bridgeFields.push(
                     {
@@ -736,10 +719,11 @@ class Importer
                   bridgeFields.push(
                     {
                       pos: headCellPos,
-                      name: fieldName,
+                      name: '__native_$fieldName',
                       meta:
                       [
                         { pos: headCellPos, name: ":noCompletion" },
+                        { pos: headCellPos, name: ":native", params: [ { pos: headCellPos, expr: EConst(CString(fieldName)) } ] },
                       ],
                       kind: FFun(
                         {
@@ -774,7 +758,7 @@ class Importer
                       expr: EConst(CString(fieldBody)),
                       pos: getPosition(cell),
                     };
-                    macro importCsv.Importer.ImporterRuntime.parseCell($cellContentExpr);
+                    macro importCsv.Runtime.parseCell($cellContentExpr);
                   }
                 }
                 var newAccess = switch (sourceField.access)
@@ -1057,7 +1041,7 @@ class Importer
                   {
                     pack: pack,
                     name: workbookName,
-                    sub: externalBridgeClassName,
+                    sub: bridgeClassName,
                   }
                   else
                   {
@@ -1165,38 +1149,6 @@ class Importer
           workbookModule.push(
             {
               pack: pack,
-              name: externalBridgeClassName,
-              pos: headPos,
-              isExtern: true,
-              meta:
-              [
-                {
-                  pos: headPos,
-                  name: ":native",
-                  params:
-                  [
-                    {
-                      expr: EConst(CString(pack.concat([ bridgeClassName ]).join("."))),
-                      pos: headPos,
-                    }
-                  ],
-                },
-                {
-                  pos: headPos,
-                  name: ":nativeGen",
-                }
-              ],
-              kind: TDClass(
-                {
-                  pack: pack,
-                  name: workbookName,
-                  sub: baseClassName,
-                }),
-              fields: externalBridgeFields,
-            });
-          workbookModule.push(
-            {
-              pack: pack,
               name: bridgeClassName,
               pos: headPos,
               meta:
@@ -1238,73 +1190,6 @@ class Importer
     ];
   }
 
-}
-
-@:dox(hide)
-class ImporterRuntime
-{
-  macro public static function parseCell(cellContent:ExprOf<String>):Expr return
-  {
-    function parseByType(expectedType:Type):Expr return
-    {
-      function parseDefaultCell(cellContent:ExprOf<String>):Expr return
-      {
-        switch (cellContent)
-        {
-          case { pos: pos, expr: EConst(CString(code)) }:
-          {
-            Context.parse(code + "\n", pos);
-          }
-          case { pos: pos } :
-          {
-            Context.error("Expected \"", pos);
-          }
-        }
-      }
-
-      function parseBaseType(baseType:BaseType):Expr return
-      {
-        for (entry in baseType.meta.get())
-        {
-          switch (entry)
-          {
-            case { name: ":parseCellFunction", params: [ functionExpr ] } :
-            {
-              return macro $functionExpr($cellContent);
-            }
-            default:
-            {
-              continue;
-            }
-          }
-        }
-        var followable = switch (expectedType)
-        {
-          case TMono(_): true;
-          case TLazy(_): true;
-          case TType(_, _): true;
-          case TInst(_.get() => { kind: KGenericBuild }, _): true;
-          default: false;
-        }
-        if (followable)
-        {
-          parseByType(Context.follow(expectedType, true));
-        }
-        else
-        {
-          parseDefaultCell(cellContent);
-        }
-      }
-      switch (expectedType)
-      {
-        case TInst(t, _): parseBaseType(t.get());
-        case TAbstract(t, _): parseBaseType(t.get());
-        case TType(t, _): parseBaseType(t.get());
-        default: parseDefaultCell(cellContent);
-      }
-    }
-    parseByType(Context.getExpectedType());
-  }
 }
 
 // vim: et sts=2 sw=2
