@@ -139,8 +139,9 @@ class Importer
   public static function generateSources(
     baseCsvPath:String,
     csvFilePaths:Iterable<String>,
-    generateTo:String
-    #if (!macro) , ?defines:Iterable<ParserDefine> #end
+    generateTo:String,
+    #if (!macro) ?defines:Iterable<ParserDefine>, #end
+    csvFilePattern:String = EXCEL_CSV_FILE_PATTERN
     ):Array<String> return
   {
     #if (!macro)
@@ -153,7 +154,7 @@ class Importer
     [
       for (csvFilePath in csvFilePaths)
       {
-        readWorksheet(csvFilePath, '$baseCsvPath/$csvFilePath');
+        readWorksheet(csvFilePath, '$baseCsvPath/$csvFilePath', new EReg(csvFilePattern, ""));
       }
     ];
     var moduleDefinitions = buildModuleDefinitions(csvEntries, #if macro new MacroParser() #else new SimnParser(defines) #end);
@@ -239,9 +240,12 @@ class Importer
   }
   #end
 
-  #if sys
+  // ~/^(.*)[\/\\]([^\/\\\.]+)\.[^\/\\\.]+\.([^\/\\\.]+)\.utf-8\.csv$/;
+  inline static var EXCEL_CSV_FILE_PATTERN = "^(.*)[\\/\\\\]([^\\/\\\\\\.]+)\\.[^\\/\\\\\\.]+\\.([^\\/\\\\\\.]+)\\.utf-8\\.csv$";
 
-  public static function readWorksheet(csvFilePath:String, resolvedPath:String):Worksheet return
+  #if (sys || macro)
+
+  public static function readWorksheet(csvFilePath:String, resolvedPath:String, csvFileEReg:EReg):Worksheet return
   {
     var pathSeperatorEReg = ~/[\/\\]/g;
     var input = sys.io.File.read(resolvedPath);
@@ -259,7 +263,6 @@ class Importer
       #end
     }
     input.close();
-    var csvFileEReg = ~/^(.*)[\/\\]([^\/\\\.]+)\.[^\/\\\.]+\.([^\/\\\.]+)\.utf-8\.csv$/;
     if (csvFileEReg.match(csvFilePath))
     {
       workbookName: csvFileEReg.matched(2),
@@ -288,7 +291,7 @@ class Importer
     haxe --macro "importCsv.Importer.importCsvFile(['myPackage/ModuleName.xlsx.ClassName1.utf-8.csv','myPackage/ModuleName.xlsx.ClassName2.utf-8.csv'])"
     `
   **/
-  macro public static function importCsv(csvFilePaths:Iterable<String>):Void
+  macro public static function importCsv(csvFilePaths:Iterable<String>, csvFilePattern:String = EXCEL_CSV_FILE_PATTERN):Void
   {
     var moduleDefinitions = try
     {
@@ -296,7 +299,7 @@ class Importer
       [
         for (csvFilePath in csvFilePaths)
         {
-          readWorksheet(csvFilePath, Context.resolvePath(csvFilePath));
+          readWorksheet(csvFilePath, Context.resolvePath(csvFilePath), new EReg(csvFilePattern, ""));
         }
       ];
       buildModuleDefinitions(csvEntries, new MacroParser());
