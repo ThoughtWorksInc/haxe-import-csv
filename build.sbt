@@ -87,7 +87,7 @@ developers := List(
   )
 )
 
-haxelibReleaseNote := "Fix compiler error for platforms other than Java and C#."
+haxelibReleaseNote := "Add Importer.importCsvFromDirectory method."
 
 haxelibTags ++= Seq(
   "cross", "cpp", "cs", "flash", "java", "javascript", "js", "neko", "php", "python", "nme",
