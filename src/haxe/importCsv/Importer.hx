@@ -23,6 +23,7 @@ import com.dongxiguo.continuation.Continuation;
 import com.dongxiguo.continuation.utils.Generator;
 import importCsv.CsvParser;
 import importCsv.error.ImporterError;
+import importCsv.error.*;
 import haxe.ds.StringMap;
 import haxe.ds.Vector;
 import haxe.io.Bytes;
@@ -31,6 +32,7 @@ import haxe.io.Input;
 import haxe.macro.Type;
 import haxe.macro.Expr;
 import haxe.macro.*;
+import Type in StdType;
 
 using StringTools;
 using Lambda;
@@ -247,29 +249,31 @@ class Importer
 
   public static function readWorksheet(csvFilePath:String, resolvedPath:String, csvFileEReg:EReg):Worksheet return
   {
-    var pathSeperatorEReg = ~/[\/\\]/g;
-    var input = sys.io.File.read(resolvedPath);
-    var data = try
-    {
-      CsvParser.parseInput(input);
-    }
-    catch (e:Dynamic)
-    {
-      input.close();
-      #if neko
-      neko.Lib.rethrow(e);
-      #else
-      throw e;
-      #end
-    }
-    input.close();
     if (csvFileEReg.match(csvFilePath))
     {
-      workbookName: csvFileEReg.matched(2),
-      worksheetName: csvFileEReg.matched(3),
-      pack: pathSeperatorEReg.split(csvFileEReg.matched(1)),
-      fileName: resolvedPath,
-      data: data,
+      var pathSeperatorEReg = ~/[\/\\]/g;
+      var input = sys.io.File.read(resolvedPath);
+      var data = try
+      {
+        CsvParser.parseInput(input);
+      }
+      catch (e:Dynamic)
+      {
+        input.close();
+        #if neko
+        neko.Lib.rethrow(e);
+        #else
+        throw e;
+        #end
+      }
+      input.close();
+      {
+        workbookName: csvFileEReg.matched(2),
+        worksheetName: csvFileEReg.matched(3),
+        pack: pathSeperatorEReg.split(csvFileEReg.matched(1)),
+        fileName: resolvedPath,
+        data: data,
+      }
     }
     else
     {
@@ -281,6 +285,77 @@ class Importer
   }
   #end
 
+  static function removeTailingSlash(directory:String):String return {
+    var ereg = ~/^((.*[^\\\/])?)[\\\/]*$/;
+    ereg.match(directory);
+    ereg.matched(1);
+  }
+
+  /**
+    把某个目录的CSV文件导入为Haxe类型。
+
+    这些CSV文件应该位于Haxe类路径，并以UTF-8编码。
+
+    用法：
+    `
+    haxe --macro "importCsv.Importer.importCsvFromDirectory(['myPackage'])"
+    `
+  **/
+  macro public static function importCsvFromDirectory(csvDirectory:String, csvFilePattern:String = EXCEL_CSV_FILE_PATTERN):Void
+  {
+    csvDirectory = removeTailingSlash(csvDirectory);
+    var csvEntries = [];
+    function appendEntries(csvDirectory, resolvedCsvDirectory):Void
+    {
+      for (fileName in sys.FileSystem.readDirectory(resolvedCsvDirectory))
+      {
+        var csvFilePath = '$csvDirectory/$fileName';
+        var resolvedFile = '$resolvedCsvDirectory/$fileName';
+        if (sys.FileSystem.isDirectory(resolvedFile))
+        {
+          appendEntries(csvFilePath, resolvedFile);
+        }
+        else
+        {
+          try
+          {
+            csvEntries.push(readWorksheet(csvFilePath, resolvedFile, new EReg(csvFilePattern, "")));
+          }
+          catch (e:InvalidCsvFileName)
+          {
+            // Ignore unmached files.
+          }
+          catch (e:ImporterError)
+          {
+            Context.error(e.message, PositionTools.make(e));
+          }
+          catch (e:CsvParserError) {
+            Context.error(e.message, PositionTools.make({file: resolvedFile, min: e.positionMin, max: e.positionMax}));
+          }
+        }
+      }
+    }
+    appendEntries(csvDirectory, Context.resolvePath(csvDirectory));
+    var moduleDefinitions = try
+    {
+      buildModuleDefinitions(csvEntries, new MacroParser());
+    }
+    catch (e:ImporterError)
+    {
+      Context.error(e.message, PositionTools.make(e));
+    }
+
+    for (moduleDefinition in moduleDefinitions)
+    {
+      //for (t in moduleDefinition.types) trace(new Printer().printTypeDefinition(t));
+      Context.defineModule(
+        moduleDefinition.modulePath,
+        moduleDefinition.types,
+        moduleDefinition.imports,
+        moduleDefinition.usings);
+    }
+  }
+
   /**
     把CSV文件导入为Haxe类型。
 
@@ -288,7 +363,7 @@ class Importer
 
     用法：
     `
-    haxe --macro "importCsv.Importer.importCsvFile(['myPackage/ModuleName.xlsx.ClassName1.utf-8.csv','myPackage/ModuleName.xlsx.ClassName2.utf-8.csv'])"
+    haxe --macro "importCsv.Importer.importCsv(['myPackage/ModuleName.xlsx.ClassName1.utf-8.csv','myPackage/ModuleName.xlsx.ClassName2.utf-8.csv'])"
     `
   **/
   macro public static function importCsv(csvFilePaths:Iterable<String>, csvFilePattern:String = EXCEL_CSV_FILE_PATTERN):Void
