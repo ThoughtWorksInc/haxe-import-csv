@@ -9,7 +9,7 @@ autoScalaLibrary := false
 crossPaths := false
 
 for {
-  c <- AllTargetConfigurations ++ AllTestTargetConfigurations
+  c <- AllTargetConfigurations
 } yield {
   haxeOptions in c ++=
     Seq("-D", "using_worksheet")
@@ -23,7 +23,7 @@ val haxelibs = Map(
 
 haxelibDependencies ++= haxelibs
 
-for (c <- AllTargetConfigurations ++ AllTestTargetConfigurations) yield {
+for (c <- AllTargetConfigurations) yield {
   haxeOptions in c ++= haxelibOptions(haxelibs)
 }
 
